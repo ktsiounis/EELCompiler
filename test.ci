@@ -1,3 +1,5 @@
+/* Example 3 */
+// Example 3
 program example3
    declare a,b,c,d,e,x,y,px,py,temp enddeclare
    repeat
@@ -5,7 +7,7 @@ program example3
           exit
       endif;
       if a=e then
-          c:=c+e;
+          c:=c/e;
       else
           repeat
               if not [a<=d] then

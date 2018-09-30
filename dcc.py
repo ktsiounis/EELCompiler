@@ -68,7 +68,6 @@ class TokenType(Enum):
     # EOF
     EOF         = 57
 
-line = -1
 tokens       = {
     '(':           TokenType.LPAREN,
     ')':           TokenType.RPAREN,
@@ -135,12 +134,29 @@ class Token():
         return  '(' + str(self.tktype)+ ', \'' + str(self.tkval) \
             + '\', ' + str(self.tkl) + ')'
 
+#################################
+#                               #
+#       Global Variables        #
+#                               #
+#################################
+line = -1
+token = Token(None, None, None)
+programName = ''
+
+#################################
+#                               #
+#       General Functions       #
+#                               #
+#################################
 def print_usage():
     print ("Usage: %s [OPTIONS] {-i|--input} <inputfile>" %__file__)
     print ("Available options:")
     print ("           -h, --help               Display usage infprmation")
     sys.exit()
 
+def print_error_and_exit(line, msg):
+    print('%s:%d:' % (inFile.name, line), ' : ', msg)
+    sys.exit()
 
 def open_required_files(inputFile, intermFile, cequivFile, outputFile):
     global inFile, intFile, ceqFile, outFile
@@ -153,7 +169,11 @@ def open_required_files(inputFile, intermFile, cequivFile, outputFile):
     except OSError as oserr:
         print(err)
 
-# Lexical Analyzer
+#################################
+#                               #
+#       Lexical Analyzer        #
+#                               #
+#################################
 def lex():
     global line
 
@@ -222,8 +242,7 @@ def lex():
                 state = DONE
         elif state == 7:
             if c == '': # EOF
-                print('Comment in line ', comment_start_pos, ' never closed!')
-                sys.exit()
+                print_error_and_exit(line, 'Comment in line %d never closed' %comment_start_pos)
             elif c == '*':
                 state = 8
         elif state == 8:
@@ -261,6 +280,55 @@ def lex():
 
     return tok
 
+#################################
+#                               #
+#        Syntax Analyzer        #
+#                               #
+#################################
+def program():
+    global token, programName
+    if token.tktype == TokenType.PROGRAMSYM:
+        token = lex()
+        if token.tktype == TokenType.IDENT:
+            programName = token.tkval
+            token = lex()
+            block()
+            if token.tktype != TokenType.ENDPROGMSYM:
+                print_error_and_exit(line, "Keyword 'endprogram' was expected but found %s instead" %token.tkval)
+        else:
+            print_error_and_exit(line, "Program name was expected but found %s instead" %token.tkval)
+    else:
+        print_error_and_exit(line, "Keyword 'program' was expected but found %s instead" %token.tkval)
+
+def block():
+    declarations()
+    subprgramms()
+    statements()
+
+def declarations():
+    global token
+    if token.tktype == TokenType.DECLARESYM:
+        token = lex()
+        varlist()
+        if token.tktype != TokenType.ENDDECLSYM:
+            print_error_and_exit(line, "Keyword 'enddeclare' was expected but found %s instead" %token.tkval)
+        token = lex()
+
+def varlist():
+    global token
+    if token.tktype == TokenType.IDENT:
+        token = lex()
+        while token.tktype == TokenType.COMMA:
+            token = lex()
+            if token.tktype != TokenType.IDENT:
+                print_error_and_exit(line, "Expected variable declaration but found %s instead" %token.tkval)
+            token = lex()
+
+def subprgramms():
+    return
+
+def statements():
+    return
 
 
 def main(argv):
@@ -289,6 +357,7 @@ def main(argv):
         print_usage()
     elif inputFile[-3:] != ".ci":
         print ("Invalid file type")
+        sys.exit()
 
     intermFile = inputFile[:-3] + ".int"
     cequivFile = inputFile[:-3] + ".c"

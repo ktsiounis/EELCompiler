@@ -13,7 +13,7 @@ program example3
               if not [a<=d] then
                   exit
               endif;
-              a:=a+b;
+              g:=a+b;
           endrepeat
       endif
    endrepeat;

@@ -160,6 +160,7 @@ def print_error_and_exit(errorType, line, msg):
     if errorType == "Syntax Error":
         os.remove(intFile.name)
         os.remove(ceqFile.name)
+        os.remove(outFile.name)
     sys.exit()
 
 def open_required_files(inputFile, intermFile, cequivFile, outputFile):
@@ -171,7 +172,7 @@ def open_required_files(inputFile, intermFile, cequivFile, outputFile):
         ceqFile = open(cequivFile, 'w', encoding='utf-8')
         outFile = open(outputFile, 'w', encoding='utf-8')
     except OSError as oserr:
-        print(err)
+        print(oserr)
 
 def close_required_files():
     global inFile
@@ -398,7 +399,189 @@ def formalparlist():
             print_error_and_exit("Syntax Error", line, "Expected variable declaration but found %s instead" %token.tkval)
 
 def statements():
-    return
+    global token
+    statement()
+    while token.tktype == TokenType.SEMICOLON:
+        token = lex()
+        statement()
+
+def statement():
+    global token
+    if token.tktype == TokenType.IDENT:
+        token = lex()
+        if token.tktype != TokenType.BECOMES:
+            print_error_and_exit("Syntax Error", line, "Expected ':=' but found %s instead" %token.tkval)
+        token = lex()
+        expression()
+    elif token.tktype == TokenType.IFSYM:
+        token = lex()
+        condition()
+        if token.tktype != TokenType.THENSYM:
+            print_error_and_exit("Syntax Error", line, "Expected 'then' but found %s instead" %token.tkval)
+        token = lex()
+        statements()
+        elsepart()
+        if token.tktype != TokenType.ENDIFSYM:
+            print_error_and_exit("Syntax Error", line, "Expected 'endif' but found %s instead" %token.tkval)
+        token = lex()
+    elif token.tktype == TokenType.WHILESYM:
+        token = lex()
+        condition()
+        statements()
+        if token.tktype != TokenType.ENDWHILESYM:
+            print_error_and_exit("Syntax Error", line, "Expected 'endwhile' but found %s instead" %token.tkval)
+        token = lex()
+    elif token.tktype == TokenType.REPEATSYM:
+        token = lex()
+        statements()
+        if token.tktype != TokenType.ENDREPSYM:
+            print_error_and_exit("Syntax Error", line, "Expected 'endrepeat' but found %s instead" %token.tkval)
+        token = lex()
+    elif token.tktype == TokenType.EXITSYM:
+        token = lex()
+    elif token.tktype == TokenType.SWITCHSYM:
+        switchStartPos = line
+        token = lex()
+        expression()
+        while token.tktype != TokenType.ENDSTHSYM:
+            if token.tktype != TokenType.CASESYM:
+                print_error_and_exit("Syntax Error", line, "Expected 'case' but found %s instead" %token.tkval)
+            token = lex()
+            expression()
+            if token.tktype != TokenType.COLON:
+                print_error_and_exit("Syntax Error", line, "Expected ':' but found %s instead" %token.tkval)
+            token = lex()
+            statements()
+            if token.tktype == TokenType.EOF:
+                print_error_and_exit("Syntax Error", switchStartPos, "Switch statement never closed")
+        token = lex()
+    elif token.tktype == TokenType.FORSYM:
+        forStartPos = line
+        token = lex()
+        while token.tktype != TokenType.ENDFORSYM:
+            if token.tktype != TokenType.WHENSYM:
+                print_error_and_exit("Syntax Error", line, "Expected 'when' but found %s instead" %token.tkval)
+            token = lex()
+            condition()
+            if token.tktype != TokenType.COLON:
+                print_error_and_exit("Syntax Error", line, "Expected ':' but found %s instead" %token.tkval)
+            token = lex()
+            statements()
+            if token.tktype == TokenType.EOF:
+                print_error_and_exit("Syntax Error", forStartPos, "Forcase statement never closed")
+        token = lex()
+    elif token.tktype == TokenType.CALLSYM:
+        token = lex()
+        if token.tktype != TokenType.IDENT:
+            print_error_and_exit("Syntax Error", line, "Expected function or procedure id but found %s instead" %token.tkval)
+        token = lex()
+        actualpars()
+    elif token.tktype == TokenType.RETURNSYM:
+        token = lex()
+        expression()
+    elif token.tktype == TokenType.PRINTSYM:
+        token = lex()
+        expression()
+    elif token.tktype == TokenType.INPUTSYM:
+        token = lex()
+        expression()
+
+def actualpars():
+    global token
+    if token.tktype != TokenType.LPAREN:
+        print_error_and_exit("Syntax Error", line, "Expected '(' but found %s instead" %token.tkval)
+    token = lex()
+    actualparlist()
+    if token.tktype != TokenType.RPAREN:
+        print_error_and_exit("Syntax Error", line, "Expected ')' but found %s instead" %token.tkval)
+    token = lex()
+
+def actualparlist():
+    global token
+    while token.tktype == TokenType.COMMA or token.tktype != TokenType.RPAREN:
+        actualparlistitem()
+
+def actualparlistitem():
+    global token
+    if token.tktype != TokenType.INSYM or token.tktype != TokenType.INOUTSYM:
+        print_error_and_exit("Syntax Error", line, "Expected ')' but found %s instead" %token.tkval)
+    token = lex()
+    expression()
+
+def expression():
+    global token
+    if token.tktype in (TokenType.PLUS, TokenType.MINUS):
+        token = lex()
+    term()
+    while token.tktype == TokenType.PLUS or token.tktype == TokenType.MINUS:
+        token = lex()
+        term()
+
+def term():
+    global token
+    factor()
+    while token.tktype == TokenType.TIMES or token.tktype == TokenType.SLASH:
+        token = lex()
+        factor()
+
+def factor():
+    global token
+    if token.tktype == TokenType.RPAREN:
+        token = lex()
+        expression()
+        if token.tktype == TokenType.RPAREN:
+            print_error_and_exit("Syntax Error", line, "Expected ')' but found %s instead" %token.tkval)
+    token = lex()
+
+def condition():
+    global token
+    boolterm()
+    while token.tktype == TokenType.ORSYM:
+        token = lex()
+        boolterm()
+
+def boolterm():
+    global token
+    boolfactor()
+    while token.tktype == TokenType.ANDSYM:
+        token = lex()
+        boolterm()
+
+def boolfactor():
+    global token
+    if token.tktype == TokenType.NOTSYM:
+        token = lex()
+        if token.tktype != TokenType.LBRACKET:
+            print_error_and_exit("Syntax Error", line, "Expected '[' but found %s instead" %token.tkval)
+        token = lex()
+        condition()
+        if token.tktype != TokenType.RBRACKET:
+            print_error_and_exit("Syntax Error", line, "Expected ']' but found %s instead" %token.tkval)
+        token = lex()
+    elif token.tktype == TokenType.LBRACKET:
+        token = lex()
+        condition()
+        if token.tktype != TokenType.RBRACKET:
+            print_error_and_exit("Syntax Error", line, "Expected ']' but found %s instead" %token.tkval)
+        token = lex()
+    elif token.tktype == TokenType.TRUESYM:
+        token = lex()
+    elif token.tktype == TokenType.FALSESYM:
+        token = lex()
+    else:
+        expression()
+        if not token.tktype in (TokenType.EQL, TokenType.LSS,
+                                TokenType.NEQ, TokenType.LEQ,
+                                TokenType.GEQ, TokenType.GTR):
+            print_error_and_exit("Syntax Error", line, "Expected relational operator but found %s instead" %token.tkval)
+        token = lex()
+        expression()
+
+def elsepart():
+    global token
+    if token.tktype == TokenType.ELSESYM:
+        token = lex()
+        statements()
 
 
 def main(argv):

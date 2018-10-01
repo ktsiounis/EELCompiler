@@ -139,7 +139,7 @@ class Token():
 #       Global Variables        #
 #                               #
 #################################
-line = -1
+line = 0
 token = Token(None, None, None)
 programName = ''
 
@@ -154,8 +154,12 @@ def print_usage():
     print ("           -h, --help               Display usage infprmation")
     sys.exit()
 
-def print_error_and_exit(line, msg):
-    print('%s:%d:' % (inFile.name, line), ' : ', msg)
+def print_error_and_exit(errorType, line, msg):
+    print('%s: File %s, line %d:' % (errorType, inFile.name, line), ' ', msg)
+    close_required_files()
+    if errorType == "Syntax Error":
+        os.remove(intFile.name)
+        os.remove(ceqFile.name)
     sys.exit()
 
 def open_required_files(inputFile, intermFile, cequivFile, outputFile):
@@ -164,10 +168,17 @@ def open_required_files(inputFile, intermFile, cequivFile, outputFile):
     try:
         inFile = open(inputFile, 'r', encoding='utf-8')
         intFile = open(intermFile, 'w', encoding='utf-8')
-        cequivFile = open(cequivFile, 'w', encoding='utf-8')
-        outputFile = open(outputFile, 'w', encoding='utf-8')
+        ceqFile = open(cequivFile, 'w', encoding='utf-8')
+        outFile = open(outputFile, 'w', encoding='utf-8')
     except OSError as oserr:
         print(err)
+
+def close_required_files():
+    global inFile
+    inFile.close()
+    intFile.close()
+    ceqFile.close()
+    outFile.close()
 
 #################################
 #                               #
@@ -285,6 +296,11 @@ def lex():
 #        Syntax Analyzer        #
 #                               #
 #################################
+def parser():
+    global token
+    token = lex()
+    program()
+
 def program():
     global token, programName
     if token.tktype == TokenType.PROGRAMSYM:
@@ -294,15 +310,15 @@ def program():
             token = lex()
             block()
             if token.tktype != TokenType.ENDPROGMSYM:
-                print_error_and_exit(line, "Keyword 'endprogram' was expected but found %s instead" %token.tkval)
+                print_error_and_exit("Syntax Error", line, "Keyword 'endprogram' was expected but found %s instead" %token.tkval)
         else:
-            print_error_and_exit(line, "Program name was expected but found %s instead" %token.tkval)
+            print_error_and_exit("Syntax Error", line, "Program name was expected but found %s instead" %token.tkval)
     else:
-        print_error_and_exit(line, "Keyword 'program' was expected but found %s instead" %token.tkval)
+        print_error_and_exit("Syntax Error", line, "Keyword 'program' was expected but found %s instead" %token.tkval)
 
 def block():
     declarations()
-    subprgramms()
+    subprograms()
     statements()
 
 def declarations():
@@ -311,7 +327,7 @@ def declarations():
         token = lex()
         varlist()
         if token.tktype != TokenType.ENDDECLSYM:
-            print_error_and_exit(line, "Keyword 'enddeclare' was expected but found %s instead" %token.tkval)
+            print_error_and_exit("Syntax Error", line, "Keyword 'enddeclare' was expected but found %s instead" %token.tkval)
         token = lex()
 
 def varlist():
@@ -321,11 +337,65 @@ def varlist():
         while token.tktype == TokenType.COMMA:
             token = lex()
             if token.tktype != TokenType.IDENT:
-                print_error_and_exit(line, "Expected variable declaration but found %s instead" %token.tkval)
+                print_error_and_exit("Syntax Error", line, "Expected variable declaration but found %s instead" %token.tkval)
             token = lex()
 
-def subprgramms():
-    return
+def subprograms():
+    global token
+    while token.tktype == TokenType.PROCSYM or token.tktype == TokenType.FUNCSYM:
+        procorfunc()
+
+def procorfunc():
+    global token
+    if token.tktype == TokenType.PROCSYM:
+        token = lex()
+        if token.tktype != TokenType.IDENT:
+            print_error_and_exit("Syntax Error", line, "Procedure name expected but found %s instead" %token.tkval)
+        token = lex()
+        procorfuncbody()
+        if token.tktype != TokenType.ENDPROCSYM:
+            print_error_and_exit("Syntax Error", line, "Keyword 'endprocedure' was expected but found %s instead" %token.tkval)
+        token = lex()
+    elif token.tktype == TokenType.FUNCSYM:
+        token = lex()
+        if token.tktype != TokenType.IDENT:
+            print_error_and_exit("Syntax Error", line, "Function name expected but found %s instead" %token.tkval)
+        token = lex()
+        procorfuncbody()
+        if token.tktype != TokenType.ENDFUNKSYM:
+            print_error_and_exit("Syntax Error", line, "Keyword 'endfunction' was expected but found %s instead" %token.tkval)
+        token = lex()
+
+def procorfuncbody():
+    formalpars()
+    block()
+
+def formalpars():
+    global token
+    if token.tktype != TokenType.LPAREN:
+        print_error_and_exit("Syntax Error", line, "Character '(' was expected but found %s instead" %token.tkval)
+    token = lex()
+    formalparlist()
+    if token.tktype != TokenType.RPAREN:
+        print_error_and_exit("Syntax Error", line, "Character ')' was expected but found %s instead" %token.tkval)
+    token = lex()
+
+def formalparlist():
+    global token
+    if token.tktype == TokenType.INSYM or token.tktype == TokenType.INOUTSYM:
+        token = lex()
+        if token.tktype == TokenType.IDENT:
+            token = lex()
+            while token.tktype == TokenType.COMMA:
+                token = lex()
+                if token.tktype != TokenType.INSYM and token.tktype != TokenType.INOUTSYM:
+                    print_error_and_exit("Syntax Error", line, "Expected keyword 'in' or 'inout' for variable declaration but found %s instead" %token.tkval)
+                token = lex()
+                if token.tktype != TokenType.IDENT:
+                    print_error_and_exit("Syntax Error", line, "Expected variable declaration but found %s instead" %token.tkval)
+                token = lex()
+        else:
+            print_error_and_exit("Syntax Error", line, "Expected variable declaration but found %s instead" %token.tkval)
 
 def statements():
     return
@@ -365,8 +435,7 @@ def main(argv):
 
     open_required_files(inputFile, intermFile, cequivFile, outputFile)
 
-    for i in range(0, 50):
-        print(lex())
+    parser()
 
 
 if __name__ == "__main__":

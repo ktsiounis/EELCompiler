@@ -12,12 +12,13 @@ program example3
           repeat
               if not [a<=d] then
                   exit
-              endif ;
+              endif;
               g:=a+b
           endrepeat
       endif
-   endrepeat ;
+   endrepeat;
    temp:=px;
    x:=1;
    y:=2
+   
 endprogram

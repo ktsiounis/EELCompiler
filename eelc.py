@@ -498,13 +498,16 @@ def actualpars():
 
 def actualparlist():
     global token
-    while token.tktype == TokenType.COMMA or token.tktype != TokenType.RPAREN:
+    if token.tktype != TokenType.RPAREN:
         actualparlistitem()
+        while token.tktype == TokenType.COMMA:
+            token = lex()
+            actualparlistitem()
 
 def actualparlistitem():
     global token
-    if token.tktype != TokenType.INSYM or token.tktype != TokenType.INOUTSYM:
-        print_error_and_exit("Syntax Error", line, "Expected ')' but found %s instead" %token.tkval)
+    if token.tktype != TokenType.INSYM and token.tktype != TokenType.INOUTSYM:
+        print_error_and_exit("Syntax Error", line, "Expected 'in' or 'inout' but found %s instead" %token.tkval)
     token = lex()
     expression()
 
@@ -531,7 +534,17 @@ def factor():
         expression()
         if token.tktype == TokenType.RPAREN:
             print_error_and_exit("Syntax Error", line, "Expected ')' but found %s instead" %token.tkval)
-    token = lex()
+        token = lex()
+    elif token.tktype == TokenType.IDENT:
+        token = lex()
+        idtail()
+    else:
+        token = lex()
+
+def idtail():
+    global token
+    if token.tktype == TokenType.LPAREN:
+        actualpars()
 
 def condition():
     global token

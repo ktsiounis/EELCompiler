@@ -7,17 +7,17 @@ program example3
           exit
       endif;
       if a=e then
-          c:=c/e;
+          c:=c/e
       else
           repeat
               if not [a<=d] then
                   exit
-              endif;
-              g:=a+b;
+              endif ;
+              g:=a+b
           endrepeat
       endif
-   endrepeat;
+   endrepeat ;
    temp:=px;
    x:=1;
-   y:=2;
+   y:=2
 endprogram

@@ -134,6 +134,19 @@ class Token():
         return  '(' + str(self.tktype)+ ', \'' + str(self.tkval) \
             + '\', ' + str(self.tkl) + ')'
 
+class Quad():
+    def __init__(self, label, op, arg1, arg2, res):
+        self.label, self.op, self.arg1, self.arg2 = label, op, arg1, arg2
+        self.res = res
+
+    def __str__(self):
+        return '(' + str(self.label) + ': ' + str(self.op)+ ', ' + \
+            str(self.arg1) + ', ' + str(self.arg2) + ', ' + str(self.res) + ')'
+
+    def tofile(self):
+        return str(self.label) + ': (' + str(self.op)+ ', ' + \
+            str(self.arg1) + ', ' + str(self.arg2) + ', ' + str(self.res) + ')'
+
 #################################
 #                               #
 #       Global Variables        #
@@ -595,6 +608,44 @@ def elsepart():
     if token.tktype == TokenType.ELSESYM:
         token = lex()
         statements()
+
+
+#################################
+#                               #
+#      Intermediate Code        #
+#         Generation            #
+#                               #
+#################################
+def nextquad():
+    return nextlabel
+
+def genquad(op, x, y, z):
+    return
+
+def newtemp():
+    global tmpvars, nextTemp
+    temp = 'T_'+str(nextTemp)
+    tempvars[temp] = None
+    nextTemp += 1
+    return temp
+
+def emptylist():
+    return list()
+
+def makelist(label):
+    newlist = list()
+    newlist.append(label)
+    return newlist
+
+def merge(list1, list2):
+    return list1 + list2
+
+def backpatch(list, z):
+    global quadcode
+    for quad in quadcode:
+        if quad.label in list:
+            quad.res = res
+
 
 
 def main(argv):

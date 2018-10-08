@@ -155,6 +155,10 @@ class Quad():
 line = 0
 token = Token(None, None, None)
 programName = ''
+quadcode = list()
+nextlabel = 0
+nextTemp = 1
+tempvars = dict()
 
 #################################
 #                               #
@@ -645,6 +649,11 @@ def backpatch(list, z):
     for quad in quadcode:
         if quad.label in list:
             quad.res = res
+
+def generate_int_code():
+    for quad in quadcode:
+        intFile.write(quad.tofile() + '\n')
+    intFile.close()
 
 
 

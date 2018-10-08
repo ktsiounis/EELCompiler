@@ -287,10 +287,10 @@ def lex():
             if c == '\n':
                 line += 1
 
-        if unget == True:
-            del buffer[-1]
-            if c != '': #if not EOF
-                inFile.seek(inFile.tell() - 1)
+    if unget == True:
+        del buffer[-1]
+        if c != '': #if not EOF
+            inFile.seek(inFile.tell() - 1)
 
     buffer_cont = ''.join(buffer)
     if buffer_cont not in tokens.keys():

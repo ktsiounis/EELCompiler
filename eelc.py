@@ -318,6 +318,7 @@ def parser():
     global token
     token = lex()
     program()
+    generate_int_code()
 
 def program():
     global token, programName
@@ -623,8 +624,12 @@ def elsepart():
 def nextquad():
     return nextlabel
 
-def genquad(op, x, y, z):
-    return
+def genquad(op=None, x='_', y='_', z='_'):
+    global nextlabel
+    label = nextlabel
+    nextlabel += 1
+    newquad = Quad(label, op, x, y, z)
+    quadcode.append(newquad)
 
 def newtemp():
     global tmpvars, nextTemp
@@ -648,7 +653,7 @@ def backpatch(list, z):
     global quadcode
     for quad in quadcode:
         if quad.label in list:
-            quad.res = res
+            quad.res = z
 
 def generate_int_code():
     for quad in quadcode:

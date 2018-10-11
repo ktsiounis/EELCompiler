@@ -327,7 +327,7 @@ def program():
         if token.tktype == TokenType.IDENT:
             programName = token.tkval
             token = lex()
-            block()
+            block(programName)
             if token.tktype != TokenType.ENDPROGMSYM:
                 print_error_and_exit("Syntax Error", line, "Keyword 'endprogram' was expected but found %s instead" %token.tkval)
         else:
@@ -335,10 +335,15 @@ def program():
     else:
         print_error_and_exit("Syntax Error", line, "Keyword 'program' was expected but found %s instead" %token.tkval)
 
-def block():
+def block(name):
     declarations()
     subprograms()
+    genquad('begin_block', name)
     statements()
+    if name == programName:
+        halt_label = nextquad()
+        genquad('halt')
+    genquad('end_block', name)
 
 def declarations():
     global token
@@ -370,8 +375,9 @@ def procorfunc():
         token = lex()
         if token.tktype != TokenType.IDENT:
             print_error_and_exit("Syntax Error", line, "Procedure name expected but found %s instead" %token.tkval)
+        name = token.tkval
         token = lex()
-        procorfuncbody()
+        procorfuncbody(name)
         if token.tktype != TokenType.ENDPROCSYM:
             print_error_and_exit("Syntax Error", line, "Keyword 'endprocedure' was expected but found %s instead" %token.tkval)
         token = lex()
@@ -379,15 +385,16 @@ def procorfunc():
         token = lex()
         if token.tktype != TokenType.IDENT:
             print_error_and_exit("Syntax Error", line, "Function name expected but found %s instead" %token.tkval)
+        name = token.tkval
         token = lex()
-        procorfuncbody()
+        procorfuncbody(name)
         if token.tktype != TokenType.ENDFUNKSYM:
             print_error_and_exit("Syntax Error", line, "Keyword 'endfunction' was expected but found %s instead" %token.tkval)
         token = lex()
 
-def procorfuncbody():
+def procorfuncbody(name):
     formalpars()
-    block()
+    block(name)
 
 def formalpars():
     global token
@@ -426,11 +433,13 @@ def statements():
 def statement():
     global token
     if token.tktype == TokenType.IDENT:
+        lhand = token.tkval
         token = lex()
         if token.tktype != TokenType.BECOMES:
             print_error_and_exit("Syntax Error", line, "Expected ':=' but found %s instead" %token.tkval)
         token = lex()
-        expression()
+        rhand = expression()
+        genquad(':=', rhand, '_', lhand)
     elif token.tktype == TokenType.IFSYM:
         token = lex()
         condition()
@@ -533,36 +542,54 @@ def expression():
     global token
     if token.tktype in (TokenType.PLUS, TokenType.MINUS):
         token = lex()
-    term()
+    term1 = term()
     while token.tktype == TokenType.PLUS or token.tktype == TokenType.MINUS:
+        op = token.tkval
         token = lex()
-        term()
+        term2 = term()
+        tmpvar = newtemp()
+        genquad(op, term1, term2, tmpvar)
+        term1 = tmpvar
+    return term1
 
 def term():
     global token
-    factor()
+    factor1 = factor()
     while token.tktype == TokenType.TIMES or token.tktype == TokenType.SLASH:
+        op = token.tkval
         token = lex()
-        factor()
+        factor2 = factor()
+        tmpvar = newtemp()
+        genquad(op, factor1, factor2, tmpvar)
+        factor1 = tmpvar
+    return factor1
 
 def factor():
     global token
     if token.tktype == TokenType.RPAREN:
         token = lex()
-        expression()
+        retval = expression()
         if token.tktype == TokenType.RPAREN:
             print_error_and_exit("Syntax Error", line, "Expected ')' but found %s instead" %token.tkval)
         token = lex()
     elif token.tktype == TokenType.IDENT:
+        retval = token.tkval
         token = lex()
-        idtail()
+        tail = idtail()
+        if tail != None:
+            funcret = newtemp()
+            genquad('par', funcret, 'RET')
+            genquad('call', retval)
+            retval = funcret
     else:
         token = lex()
+        retval = token.tkval
+    return retval
 
 def idtail():
     global token
     if token.tktype == TokenType.LPAREN:
-        actualpars()
+        return actualpars()
 
 def condition():
     global token

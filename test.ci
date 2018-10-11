@@ -20,5 +20,4 @@ program example3
    temp:=px;
    x:=1;
    y:=2
-   
 endprogram

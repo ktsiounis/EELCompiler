@@ -522,6 +522,7 @@ def actualpars():
     if token.tktype != TokenType.RPAREN:
         print_error_and_exit("Syntax Error", line, "Expected ')' but found %s instead" %token.tkval)
     token = lex()
+    return True
 
 def actualparlist():
     global token
@@ -535,8 +536,17 @@ def actualparlistitem():
     global token
     if token.tktype != TokenType.INSYM and token.tktype != TokenType.INOUTSYM:
         print_error_and_exit("Syntax Error", line, "Expected 'in' or 'inout' but found %s instead" %token.tkval)
-    token = lex()
-    expression()
+    elif token.tktype == TokenType.INSYM:
+        token = lex()
+        exp = expression()
+        genquad('par', exp, 'CV')
+    elif token.tktype == TokenType.INOUTSYM:
+        token = lex()
+        par = token.tkval
+        if token.tktype != TokenType.IDENT :
+            print_error_and_exit("Syntax Error", line, "Expected variable identifier but found %s instead" %token.tkval)
+        token = lex()
+        genquad('par', par, 'REF')
 
 def expression():
     global token

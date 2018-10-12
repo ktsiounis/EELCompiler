@@ -582,8 +582,8 @@ def factor():
             genquad('call', retval)
             retval = funcret
     else:
-        token = lex()
         retval = token.tkval
+        token = lex()
     return retval
 
 def idtail():

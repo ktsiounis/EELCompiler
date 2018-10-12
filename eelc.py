@@ -499,19 +499,24 @@ def statement():
         token = lex()
     elif token.tktype == TokenType.CALLSYM:
         token = lex()
+        id = token.tkval
         if token.tktype != TokenType.IDENT:
             print_error_and_exit("Syntax Error", line, "Expected function or procedure id but found %s instead" %token.tkval)
         token = lex()
         actualpars()
+        genquad('call', id)
     elif token.tktype == TokenType.RETURNSYM:
         token = lex()
-        expression()
+        exp = expression()
+        genquad('retv', exp)
     elif token.tktype == TokenType.PRINTSYM:
         token = lex()
-        expression()
+        exp = expression()
+        genquad('out', exp)
     elif token.tktype == TokenType.INPUTSYM:
         token = lex()
-        expression()
+        exp = expression()
+        genquad('inp', exp)
 
 def actualpars():
     global token

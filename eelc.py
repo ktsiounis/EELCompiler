@@ -152,7 +152,7 @@ class Quad():
 #       Global Variables        #
 #                               #
 #################################
-line = 0
+line = 1
 token = Token(None, None, None)
 programName = ''
 quadcode = list()
@@ -494,16 +494,27 @@ def statement():
     elif token.tktype == TokenType.SWITCHSYM:
         switchStartPos = line
         token = lex()
-        expression()
+        switchexp = expression()
+        exitlist = emptylist()
         while token.tktype != TokenType.ENDSTHSYM:
             if token.tktype != TokenType.CASESYM:
                 print_error_and_exit("Syntax Error", line, "Expected 'case' but found %s instead" %token.tkval)
             token = lex()
-            expression()
+            caseexp = expression()
             if token.tktype != TokenType.COLON:
                 print_error_and_exit("Syntax Error", line, "Expected ':' but found %s instead" %token.tkval)
+            true_list = makelist(nextquad())
+            genquad('=', switchexp, caseexp)
+            false_list = makelist(nextquad())
+            genquad('jump')
+            backpatch(true_list, nextquad())
             token = lex()
             statements()
+            tmplist = makelist(nextquad())
+            genquad('jump')
+            exitlist = merge(exitlist, tmplist)
+            backpatch(false_list, nextquad())
+            backpatch(exitlist, nextquad())
             if token.tktype == TokenType.EOF:
                 print_error_and_exit("Syntax Error", switchStartPos, "Switch statement never closed")
         token = lex()
@@ -523,7 +534,6 @@ def statement():
             whenlist = makelist(nextquad())
             genquad('jump')
             backpatch(b_false, nextquad())
-            elsepart()
             backpatch(whenlist, nextquad())
             if token.tktype == TokenType.EOF:
                 print_error_and_exit("Syntax Error", forStartPos, "Forcase statement never closed")

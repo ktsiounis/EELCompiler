@@ -24,10 +24,18 @@ program example1
     call two(in g)
   endfunction
 
+  i:=5;
+  g:=1;
+  call one (in g);
+
+  switch i
+    case 2: i:=2
+    case 3: i:=3
+  endswitch;
+
   forcase
-    when i=4: i:=5;
-    when i=5: g:=1;
-    when i=3: g:=3
-  endforcase;
-  call one (in g)
+    when i=2: i:=2
+    when i=3: i:=3
+  endforcase
+
 endprogram

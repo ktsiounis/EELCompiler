@@ -448,18 +448,22 @@ def statement():
         token = lex()
         backpatch(b_true, nextquad())
         statements()
-        skiplist = makelist(nextquad())
+        iflist = makelist(nextquad())
         genquad('jump')
         backpatch(b_false, nextquad())
         elsepart()
-        backpatch(skiplist, nextquad())
+        backpatch(iflist, nextquad())
         if token.tktype != TokenType.ENDIFSYM:
             print_error_and_exit("Syntax Error", line, "Expected 'endif' but found %s instead" %token.tkval)
         token = lex()
     elif token.tktype == TokenType.WHILESYM:
         token = lex()
-        condition()
+        b_quad = nextquad()
+        (b_true, b_false) = condition()
+        backpatch(b_true, nextquad())
         statements()
+        genquad('jump', '_', '_', b_quad)
+        backpatch(b_false, nextquad())
         if token.tktype != TokenType.ENDWHILESYM:
             print_error_and_exit("Syntax Error", line, "Expected 'endwhile' but found %s instead" %token.tkval)
         token = lex()
@@ -615,18 +619,22 @@ def condition():
     global token
     (b_true, b_false) = (q1_true, q1_false) = boolterm()
     while token.tktype == TokenType.ORSYM:
-        #TODO: Implement here the or
+        backpatch(b_false, nextquad())
         token = lex()
-        boolterm()
+        (q2_true, q2_false) = boolterm()
+        b_true = merge(b_true, q2_true)
+        b_false = q2_false
     return (b_true, b_false)
 
 def boolterm():
     global token
     (q_true, q_false) = (r1_true, r1_false) = boolfactor()
     while token.tktype == TokenType.ANDSYM:
-        #TODO: Implement here the and
+        backpatch(q_true, nextquad())
         token = lex()
-        boolterm()
+        (r2_true, r2_false) = boolfactor()
+        q_false = merge(q_false, r2_false)
+        q_true = r2_true
     return (q_true, q_false)
 
 def boolfactor():

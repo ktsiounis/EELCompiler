@@ -159,6 +159,8 @@ quadcode = list()
 nextlabel = 0
 nextTemp = 1
 tempvars = dict()
+inRepeat = []
+exitRepeat = []
 
 #################################
 #                               #
@@ -468,12 +470,26 @@ def statement():
             print_error_and_exit("Syntax Error", line, "Expected 'endwhile' but found %s instead" %token.tkval)
         token = lex()
     elif token.tktype == TokenType.REPEATSYM:
+        global inRepeat, exitRepeat
+        inRepeat.append(True)
+        exitRepeat.append(None)
+        s_quad = nextquad()
         token = lex()
         statements()
         if token.tktype != TokenType.ENDREPSYM:
             print_error_and_exit("Syntax Error", line, "Expected 'endrepeat' but found %s instead" %token.tkval)
+        genquad('jump', '_', '_', s_quad)
+        if exitRepeat[-1] != None:
+            backpatch(exitRepeat[-1], nextquad())
+        exitRepeat.pop()
+        inRepeat.pop()
         token = lex()
     elif token.tktype == TokenType.EXITSYM:
+        if inRepeat == []:
+            print_error_and_exit("Syntax Error", line, "Encountered \'exit\' outside of a do-while loop")
+        e_list = makelist(nextquad())
+        genquad('jump')
+        exitRepeat[-1] = e_list
         token = lex()
     elif token.tktype == TokenType.SWITCHSYM:
         switchStartPos = line
@@ -498,11 +514,17 @@ def statement():
             if token.tktype != TokenType.WHENSYM:
                 print_error_and_exit("Syntax Error", line, "Expected 'when' but found %s instead" %token.tkval)
             token = lex()
-            condition()
+            (b_true, b_false) = condition()
             if token.tktype != TokenType.COLON:
                 print_error_and_exit("Syntax Error", line, "Expected ':' but found %s instead" %token.tkval)
             token = lex()
+            backpatch(b_true, nextquad())
             statements()
+            whenlist = makelist(nextquad())
+            genquad('jump')
+            backpatch(b_false, nextquad())
+            elsepart()
+            backpatch(whenlist, nextquad())
             if token.tktype == TokenType.EOF:
                 print_error_and_exit("Syntax Error", forStartPos, "Forcase statement never closed")
         token = lex()

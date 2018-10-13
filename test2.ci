@@ -24,7 +24,10 @@ program example1
     call two(in g)
   endfunction
 
-  i:=5;
-  g:=1;
+  forcase
+    when i=4: i:=5;
+    when i=5: g:=1;
+    when i=3: g:=3
+  endforcase;
   call one (in g)
 endprogram

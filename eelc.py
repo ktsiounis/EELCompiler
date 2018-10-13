@@ -442,12 +442,17 @@ def statement():
         genquad(':=', rhand, '_', lhand)
     elif token.tktype == TokenType.IFSYM:
         token = lex()
-        condition()
+        (b_true, b_false) = condition()
         if token.tktype != TokenType.THENSYM:
             print_error_and_exit("Syntax Error", line, "Expected 'then' but found %s instead" %token.tkval)
         token = lex()
+        backpatch(b_true, nextquad())
         statements()
+        skiplist = makelist(nextquad())
+        genquad('jump')
+        backpatch(b_false, nextquad())
         elsepart()
+        backpatch(skiplist, nextquad())
         if token.tktype != TokenType.ENDIFSYM:
             print_error_and_exit("Syntax Error", line, "Expected 'endif' but found %s instead" %token.tkval)
         token = lex()
@@ -608,17 +613,21 @@ def idtail():
 
 def condition():
     global token
-    boolterm()
+    (b_true, b_false) = (q1_true, q1_false) = boolterm()
     while token.tktype == TokenType.ORSYM:
+        #TODO: Implement here the or
         token = lex()
         boolterm()
+    return (b_true, b_false)
 
 def boolterm():
     global token
-    boolfactor()
+    (q_true, q_false) = (r1_true, r1_false) = boolfactor()
     while token.tktype == TokenType.ANDSYM:
+        #TODO: Implement here the and
         token = lex()
         boolterm()
+    return (q_true, q_false)
 
 def boolfactor():
     global token
@@ -627,13 +636,13 @@ def boolfactor():
         if token.tktype != TokenType.LBRACKET:
             print_error_and_exit("Syntax Error", line, "Expected '[' but found %s instead" %token.tkval)
         token = lex()
-        condition()
+        retval = condition()
         if token.tktype != TokenType.RBRACKET:
             print_error_and_exit("Syntax Error", line, "Expected ']' but found %s instead" %token.tkval)
         token = lex()
     elif token.tktype == TokenType.LBRACKET:
         token = lex()
-        condition()
+        retval = condition()
         if token.tktype != TokenType.RBRACKET:
             print_error_and_exit("Syntax Error", line, "Expected ']' but found %s instead" %token.tkval)
         token = lex()
@@ -642,13 +651,20 @@ def boolfactor():
     elif token.tktype == TokenType.FALSESYM:
         token = lex()
     else:
-        expression()
+        expL = expression()
+        op = token.tkval
         if not token.tktype in (TokenType.EQL, TokenType.LSS,
                                 TokenType.NEQ, TokenType.LEQ,
                                 TokenType.GEQ, TokenType.GTR):
             print_error_and_exit("Syntax Error", line, "Expected relational operator but found %s instead" %token.tkval)
         token = lex()
-        expression()
+        expR = expression()
+        r_true = makelist(nextquad())
+        genquad(op, expL, expR)
+        r_false = makelist(nextquad())
+        genquad('jump')
+        retval = (r_true, r_false)
+    return retval
 
 def elsepart():
     global token

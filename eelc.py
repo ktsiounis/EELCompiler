@@ -162,6 +162,7 @@ nextTemp = 1
 tempvars = dict()
 inRepeat = []
 exitRepeat = []
+have_subprogram_or_function = False
 
 #################################
 #                               #
@@ -322,7 +323,11 @@ def parser():
     token = lex()
     program()
     generate_int_code()
-    generate_c_code_file()
+    if have_subprogram_or_function == False:
+        generate_c_code_file()
+    else:
+        ceqFile.close()
+        os.remove(ceqFile.name)
 
 def program():
     global token, programName
@@ -369,8 +374,9 @@ def varlist():
             token = lex()
 
 def subprograms():
-    global token
+    global token, have_subprogram_or_function
     while token.tktype == TokenType.PROCSYM or token.tktype == TokenType.FUNCSYM:
+        have_subprogram_or_function = True
         procorfunc()
 
 def procorfunc():
